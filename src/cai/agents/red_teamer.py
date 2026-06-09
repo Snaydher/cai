@@ -12,9 +12,12 @@ from cai.config import get_config
 from cai.tools.reconnaissance.generic_linux_command import (  # pylint: disable=import-error # noqa: E501
 generic_linux_command,
 )
+from cai.tools.reconnaissance.nmap import nmap_scan
+from cai.tools.reconnaissance.enumeration import enum_network_surface, enum_web_surface
 from cai.tools.web.search_web import (  # pylint: disable=import-error # noqa: E501
     make_web_search_with_explanation,
 )
+from cai.tools.web.http_probe import http_probe
 from cai.agents._intel_tools import (  # pylint: disable=import-error  # noqa: E501
     WEB_INTEL_PROMPT_HARDENING,
     WEB_INTEL_TOOLS,
@@ -44,6 +47,10 @@ redteam_agent_system_prompt = load_prompt_template("prompts/system_red_team_agen
 # Define tools list based on available API keys (via CAIConfig) [S]
 tools = [
     generic_linux_command,
+    nmap_scan,
+    http_probe,
+    enum_network_surface,
+    enum_web_surface,
     execute_code,
     *WEB_INTEL_TOOLS,
 ]

@@ -1,6 +1,4 @@
-"""
-Global usage tracker that persists usage data to $HOME/.cai/usage.json
-"""
+"""Global usage tracker that persists usage data to ``$HOME/.cai/usage.json``."""
 
 import json
 import os
@@ -40,8 +38,8 @@ class GlobalUsageTracker:
 
         self._initialized = True
 
-        # Check if tracking is disabled
-        self.enabled = os.getenv("CAI_DISABLE_USAGE_TRACKING", "").lower() != "true"
+        # Privacy-first fork default: only enable when explicitly opted in.
+        self.enabled = os.getenv("CAI_DISABLE_USAGE_TRACKING", "true").lower() == "false"
 
         if not self.enabled:
             # Create minimal structure to avoid errors

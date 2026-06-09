@@ -641,17 +641,17 @@ ADDITIONAL_VARS = {
     'CAI_TELEMETRY': {
         'name': 'CAI_TELEMETRY',
         'description': 'Enable/disable telemetry collection',
-        'default': 'true',
+        'default': 'false',
     },
     'CAI_DISABLE_SESSION_RECORDING': {
         'name': 'CAI_DISABLE_SESSION_RECORDING',
         'description': 'Disable session recording to JSONL',
-        'default': 'false',
+        'default': 'true',
     },
     'CAI_DISABLE_USAGE_TRACKING': {
         'name': 'CAI_DISABLE_USAGE_TRACKING',
         'description': 'Disable usage/cost tracking',
-        'default': 'false',
+        'default': 'true',
     },
 
     # =====================
@@ -2709,4 +2709,3 @@ def get_tui_state() -> TUISettingsState:
 
 # Register the command
 register_command(SettingsCommand())
-

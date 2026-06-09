@@ -120,3 +120,35 @@ def test_no_explicit_custom_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("CSI_CUSTOM_ENDPOINT", raising=False)
     monkeypatch.delenv("OPENAI_API_BASE", raising=False)
     assert m.explicit_custom_llm_api_base_configured("alias1") is False
+
+
+def test_resolve_api_key_uses_alias_key_only_for_alias_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALIAS_API_KEY", "alias-real-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-real-key")
+
+    assert m.resolve_llm_openai_compatible_api_key("alias1") == "alias-real-key"
+    assert m.resolve_llm_openai_compatible_api_key("csi-local") == "alias-real-key"
+
+
+def test_resolve_api_key_uses_openai_key_for_non_alias_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALIAS_API_KEY", "alias-real-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-real-key")
+
+    assert m.resolve_llm_openai_compatible_api_key("gpt-4o") == "openai-real-key"
+    assert m.resolve_llm_openai_compatible_api_key("zai/glm-4.5") == "openai-real-key"
+
+
+def test_resolve_api_key_allow_placeholder_is_explicit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ALIAS_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    assert m.resolve_llm_openai_compatible_api_key("alias1") == ""
+    assert m.resolve_llm_openai_compatible_api_key("gpt-4o") == ""
+    assert (
+        m.resolve_llm_openai_compatible_api_key("alias1", allow_placeholder=True)
+        == m.DEFAULT_OPENAI_COMPATIBLE_PLACEHOLDER_KEY
+    )
+    assert (
+        m.resolve_llm_openai_compatible_api_key("zai/glm-4.5", allow_placeholder=True)
+        == m.DEFAULT_OPENAI_COMPATIBLE_PLACEHOLDER_KEY
+    )

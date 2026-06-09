@@ -8,6 +8,7 @@ all available agents in the CAI system to make informed recommendations.
 import importlib
 import os
 import pkgutil
+import re
 from functools import lru_cache
 from typing import Dict, List, Any
 from cai.sdk.agents import Agent, function_tool
@@ -128,6 +129,13 @@ def _analyze_task_requirements(task_description: str) -> Dict[str, Any]:
         Dict containing analysis of the task requirements
     """
     task_lower = task_description.lower()
+    has_ipv4 = bool(re.search(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", task_description))
+    has_url = "://" in task_lower or any(token in task_lower for token in (" www.", "/api", "endpoint", "url"))
+    shell_recon_keywords = [
+        "scan", "nmap", "port", "service", "banner", "host", "ssh", "enum", "enumerate",
+        "directory", "file", "process", "socket", "netstat", "ss ", "curl", "http probe",
+    ]
+    dfir_keywords = ["log", "journalctl", "pcap", "artifact", "timeline", "triage", "memory dump"]
     
     # Define task categories and keywords
     task_categories = {
@@ -182,6 +190,30 @@ def _analyze_task_requirements(task_description: str) -> Dict[str, Any]:
         if matches > 0:
             detected_categories.append(category)
             confidence_scores[category] = matches / len(keywords)
+
+    if has_ipv4 or any(keyword in task_lower for keyword in shell_recon_keywords):
+        if "penetration_testing" not in detected_categories:
+            detected_categories.append("penetration_testing")
+        confidence_scores["penetration_testing"] = max(
+            confidence_scores.get("penetration_testing", 0.0),
+            0.9 if has_ipv4 else 0.6,
+        )
+        if "network_security" not in detected_categories:
+            detected_categories.append("network_security")
+        confidence_scores["network_security"] = max(
+            confidence_scores.get("network_security", 0.0),
+            0.8 if has_ipv4 else 0.5,
+        )
+
+    if has_url:
+        if "bug_bounty" not in detected_categories:
+            detected_categories.append("bug_bounty")
+        confidence_scores["bug_bounty"] = max(confidence_scores.get("bug_bounty", 0.0), 0.75)
+
+    if any(keyword in task_lower for keyword in dfir_keywords):
+        if "forensics" not in detected_categories:
+            detected_categories.append("forensics")
+        confidence_scores["forensics"] = max(confidence_scores.get("forensics", 0.0), 0.8)
     
     # Determine complexity and scope
     complexity_indicators = {
@@ -314,6 +346,12 @@ def _generate_initial_recommendations(categories: List[str], complexity: str, ne
     
     if "reporting" in categories:
         recommendations.append("Consider reporting_agent for generating reports")
+
+    if "penetration_testing" in categories and "network_security" in categories:
+        recommendations.append("Operational host and port work should prefer redteam_agent or one_tool_agent")
+
+    if "forensics" in categories:
+        recommendations.append("Operational artifact and log triage should prefer dfir_agent")
     
     if needs_multiple:
         recommendations.append("Consider using multiple agents or a pattern for comprehensive coverage")

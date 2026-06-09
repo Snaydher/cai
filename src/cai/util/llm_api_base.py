@@ -6,6 +6,7 @@ import os
 import urllib.parse
 
 DEFAULT_ALIAS_LLM_API_BASE = "https://api.aliasrobotics.com:666/"
+DEFAULT_OPENAI_COMPATIBLE_PLACEHOLDER_KEY = "sk-placeholder-key-for-local-models"
 
 # Model ids for which ``CSI_CUSTOM_ENDPOINT`` / ``ALIAS_API_URL`` may apply (prefix match, case-insensitive).
 _ALIAS_API_URL_MODEL_PREFIXES: tuple[str, ...] = ("cai", "alias", "csi")
@@ -93,7 +94,11 @@ def resolve_llm_openai_compatible_base(model: str | None = None) -> str:
     return DEFAULT_ALIAS_LLM_API_BASE
 
 
-def resolve_llm_openai_compatible_api_key(model: str | None = None) -> str:
+def resolve_llm_openai_compatible_api_key(
+    model: str | None = None,
+    *,
+    allow_placeholder: bool = False,
+) -> str:
     """Resolve API key for OpenAI-compatible clients.
 
     Rules:
@@ -104,5 +109,11 @@ def resolve_llm_openai_compatible_api_key(model: str | None = None) -> str:
     """
     effective = (model if model is not None else os.getenv("CAI_MODEL")) or ""
     if model_qualifies_for_alias_api_url(effective):
-        return (os.getenv("ALIAS_API_KEY") or "").strip()
-    return (os.getenv("OPENAI_API_KEY") or "").strip()
+        key = (os.getenv("ALIAS_API_KEY") or "").strip()
+    else:
+        key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if key:
+        return key
+    if allow_placeholder:
+        return DEFAULT_OPENAI_COMPATIBLE_PLACEHOLDER_KEY
+    return ""

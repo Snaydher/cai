@@ -506,7 +506,7 @@ def _resolve_parallel_model_name(config_model: str | None) -> str:
 
 
 def _print_session_log_target(
-    console: Console, filepath: str, *, trailing_blankline: bool = True
+    console: Console, filepath: str | None, *, trailing_blankline: bool = True
 ) -> None:
     """Print session JSONL path (Layout 1: italic grey path:/file: lines).
 
@@ -515,6 +515,9 @@ def _print_session_log_target(
     ends with its own blank line.
     """
     from cai.util.cli_palette import GREY_TEXT
+
+    if not filepath:
+        return
 
     log_style = f"italic {GREY_TEXT}"
     expanded = os.path.expanduser(filepath)

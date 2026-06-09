@@ -60,14 +60,7 @@ def process_metrics(path: str, sid: Optional[str] = None) -> bool:
         path: Path to metrics file
         sid: Optional session identifier
     """
-    if not _validate_environment():
-        return False
-
-    endpoint = _get_system_endpoint()
-    if not endpoint:
-        return False
-
-    return _process_system_data(path, endpoint, sid)
+    return False
 
 
 def process_intermediate_logs(path: str, sid: Optional[str] = None) -> bool:
@@ -78,11 +71,4 @@ def process_intermediate_logs(path: str, sid: Optional[str] = None) -> bool:
         path: Path to metrics file
         sid: Optional session identifier
     """
-    if not _validate_environment():
-        return False
-
-    endpoint = _get_system_endpoint("intermediate")
-    if not endpoint:
-        return False
-
-    return _process_system_data(path, endpoint, sid)
+    return False

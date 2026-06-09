@@ -2,6 +2,13 @@
 
 This comprehensive guide documents all environment variables available in CAI, including their purposes, default values, and usage examples.
 
+This fork also changes a few defaults and runtime conventions:
+
+- `CAI_TRACING=false` by default
+- `CAI_TELEMETRY=false` by default
+- session recording is opt-in
+- a central env file at `~/.config/cai/.env` is supported natively via `CAI_ENV_FILE` / nearest `.env` fallback logic
+
 ---
 
 ## 🔎 Discovering variables in the REPL
@@ -38,7 +45,7 @@ Aliases such as `/h` for `/help` work the same way. This page remains the **cano
 | CAI_ORCHESTRATION_MAS_HINT         | When ``true``, ``orchestration_agent`` may receive one synthetic ``user``-role nudge per ``Runner`` run if the user message looks multi-front but only ``run_specialist`` was invoked (suggests ``run_parallel_specialists`` / contest). Set ``false`` to disable                                                                                                                                                                                                                                                                                                                                         | true                                           |
 | CAI_MAX_INTERACTIONS       | Maximum number of interactions (tool calls, agent actions, etc.) allowed in a session. If exceeded, only CLI commands are allowed until increased. If force_until_flag=true, the session will exit                                                                                                                                                                                               | inf                                            |
 | CAI_PRICE_LIMIT            | Price limit for the conversation in dollars. If exceeded, only CLI commands are allowed until increased. If force_until_flag=true, the session will exit                                                                                                                                                                                                                                         | 1                                              |
-| CAI_TRACING                | Enable/disable OpenTelemetry tracing. When enabled, traces execution flow and agent interactions for debugging and analysis                                                                                                                                                                                                                                                                      | true                                           |
+| CAI_TRACING                | Enable/disable OpenTelemetry tracing. When enabled, traces execution flow and agent interactions for debugging and analysis                                                                                                                                                                                                                                                                      | false                                          |
 | CAI_AGENT_TYPE             | Registered agent key. Defaults to `orchestration_agent` for default routing plus optional dual-approach contest; use `selection_agent` for the slimmer handoff-only router, or pin a specialist such as `redteam_agent`. Use "/agent" command in CLI to list all available agents                                                                                                                   | orchestration_agent                           |
 | CAI_STATE                  | Enable/disable stateful mode. When enabled, the agent will use a state agent to keep track of the state of the network and the flags found                                                                                                                                                                                                                                                       | false                                          |
 | CAI_COMPACTED_MEMORY       | When true, inject `/compact` conversation summaries into agent system prompts                                                                                                                                                                                                                                                                                                                      | false                                          |
@@ -49,7 +56,7 @@ Aliases such as `/h` for `/help` work the same way. This page remains the **cano
 | CAI_TOOL_STREAM            | Enable/disable streaming output for tool executions (real-time command output). Independent of CAI_STREAM                                                                                                                                                                                                                                                                                        | true                                           |
 | CAI_DEBUG_TOOLS_VIZ        | Enable debug output for tool visualization and panel rendering. Shows detailed info about tool call display, deduplication, and streaming state                                                                                                                                                                                                                                                  | false                                          |
 | CAI_SHOW_CACHE             | Show cache information and message history list. Displays prompt caching stats and the full message list sent to the model                                                                                                                                                                                                                                                                       | false                                          |
-| CAI_TELEMETRY              | Enable/disable telemetry                                                                                                                                                                                                                                                                                                                                                                         | true                                           |
+| CAI_TELEMETRY              | Enable/disable telemetry                                                                                                                                                                                                                                                                                                                                                                         | false                                          |
 | CAI_PARALLEL               | Number of parallel agent instances to run. When set to values greater than 1, executes multiple instances of the same agent in parallel and displays all results                                                                                                                                                                                                                                 | 1                                              |
 | CAI_GUARDRAILS             | Enable/disable security guardrails for agents. When set to "true", applies security guardrails to prevent potentially dangerous outputs and inputs                                                                                                                                                                                                                                               | false                                          |
 | CAI_GCTR_NITERATIONS       | Number of tool interactions before triggering GCTR (Generative Cut-The-Rope) analysis in bug_bounter_gctr agent. Only applies when using gctr-enabled agents                                                                                                                                                                                                                                     | 5                                              |
@@ -73,6 +80,9 @@ For first-time users, these are the essential variables to configure:
 # Required: Model selection
 CAI_MODEL="alias1"                    # or gpt-4o, claude-sonnet-4.5, ollama/qwen2.5:72b
 
+# Centralized env file for this fork
+CAI_ENV_FILE="$HOME/.config/cai/.env"
+
 # Recommended: Agent type (default CLI entry is orchestration_agent)
 CAI_AGENT_TYPE="orchestration_agent" # breadth-first + specialist tools; selection_agent = handoffs only
 # CAI_ORCHESTRATION_WORKER_MAX_TURNS=6   # per-worker turn cap when using orchestration_agent tools
@@ -82,6 +92,11 @@ CAI_AGENT_TYPE="orchestration_agent" # breadth-first + specialist tools; selecti
 # Optional but useful: Cost control
 CAI_PRICE_LIMIT="1"                   # Maximum spend in dollars
 ```
+
+Authentication rule of thumb:
+
+- Alias-family models use `ALIAS_API_KEY`
+- Z.AI / OpenAI-compatible non-alias models use `OPENAI_API_KEY`
 
 **Related Documentation:**
 
@@ -175,7 +190,7 @@ CAI_MAX_INTERACTIONS="inf"            # Maximum allowed interactions
 
 # Debugging & monitoring
 CAI_DEBUG="1"                         # 0: minimal, 1: verbose, 2: CLI debug
-CAI_TRACING="true"                    # Enable OpenTelemetry tracing
+CAI_TRACING="false"                   # Keep tracing disabled by default
 ```
 
 **Security Layers:**
@@ -212,7 +227,7 @@ CAI_TOOL_TIMEOUT="60"                 # Override default command timeouts (in se
 CAI_IDLE_TIMEOUT="100"                # Max seconds without output before terminating (default: 100)
 
 # Telemetry
-CAI_TELEMETRY="true"                  # Enable usage analytics
+CAI_TELEMETRY="false"                 # Keep telemetry disabled by default
 ```
 
 **Streaming Configuration:**
@@ -231,6 +246,21 @@ CAI_TELEMETRY="true"                  # Enable usage analytics
 - Set `CAI_IDLE_TIMEOUT` to control how long a command can run without producing output before being terminated (default: 100s). Increase for slow network scans like nmap
 - Enable `CAI_CTX_TRUNC=true` when working with large files (JS/HTML/CSS) to prevent context overflow
 - Set `CAI_DISPLAY_MAX_OUTPUT=true` to see full tool output without truncation (useful for debugging format strings, large outputs)
+
+### 🖥️ Fork Runtime and Session Logging
+
+For this fork's local-from-source workflow:
+
+```bash
+CAI_ENV_FILE="$HOME/.config/cai/.env"
+CAI_DISABLE_SESSION_RECORDING="true"  # default behavior in this fork
+```
+
+Notes:
+
+- when session recording is disabled, the CLI still works through an internal no-op recorder
+- local JSONL session logs are only produced when recording is explicitly enabled
+- telemetry/metrics upload remains disabled by default
 
 ---
 

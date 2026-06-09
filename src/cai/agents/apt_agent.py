@@ -16,10 +16,13 @@ from cai.config import get_config
 from cai.tools.reconnaissance.generic_linux_command import (  # pylint: disable=import-error # noqa: E501
     generic_linux_command,
 )
+from cai.tools.reconnaissance.nmap import nmap_scan
+from cai.tools.reconnaissance.enumeration import enum_network_surface, enum_web_surface
 
 from cai.tools.reconnaissance.exec_code import (  # pylint: disable=import-error # noqa: E501
     execute_code,
 )
+from cai.tools.web.http_probe import http_probe
 
 from cai.agents._intel_tools import (  # pylint: disable=import-error  # noqa: E501
     WEB_INTEL_PROMPT_HARDENING,
@@ -57,6 +60,10 @@ tools = [
     think,                      # Strategic thinking and complex reasoning
     thought,                    # Detailed multi-faceted analysis (breakdown, reflection, action, next_step, key_clues)
     generic_linux_command,      # Primary tool for command execution and shell sessions
+    nmap_scan,                  # Structured network scanning
+    http_probe,                 # Structured HTTP probing
+    enum_network_surface,       # First-pass network enumeration wrapper
+    enum_web_surface,           # First-pass web enumeration wrapper
     execute_code,               # Python code execution for custom tooling and automation
     write_key_findings,         # Persist critical intelligence discovered during campaign
     read_key_findings,          # Retrieve previously documented intelligence

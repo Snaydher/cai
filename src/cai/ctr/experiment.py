@@ -114,15 +114,17 @@ from cai.ctr.attack_graph import create_graph_from_agent_output, plot_attack_gra
 from cai.ctr.probability_computation import compute_edge_probabilities_offline
 from cai.ctr.visualization import visualize_baseline_results
 from cai.ctr.paths import get_ctr_output_base_dir
+from cai.envfiles import get_env_load_candidates
 import litellm
 
 
 from cai.ctr.core import main as ctr_core_main
 from cai.util import calculate_model_cost
 
-# Load .env from current directory only, not from parent directories
-dotenv_path = os.path.join(os.getcwd(), '.env')
-dotenv.load_dotenv(dotenv_path=dotenv_path, verbose=False)
+# Load the effective CAI dotenv files without overriding shell environment.
+for dotenv_path in get_env_load_candidates():
+    if dotenv_path.is_file():
+        dotenv.load_dotenv(dotenv_path=dotenv_path, verbose=False, override=False)
 
 # Set default for OPENAI_API_KEY if not already set
 if "OPENAI_API_KEY" not in os.environ:

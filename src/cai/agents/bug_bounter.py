@@ -12,6 +12,8 @@ from cai.util import load_prompt_template, create_system_prompt_renderer
 from cai.tools.reconnaissance.generic_linux_command import (  # pylint: disable=import-error # noqa: E501
 generic_linux_command,
 )
+from cai.tools.reconnaissance.enumeration import enum_web_surface
+from cai.tools.web.http_probe import http_probe
 from cai.tools.web.search_web import (  # pylint: disable=import-error # noqa: E501
     make_google_search,
 )
@@ -46,7 +48,15 @@ _cfg = get_config()
 # Prompts
 bug_bounter_system_prompt = load_prompt_template("prompts/system_bug_bounter.md")
 
-tools = [generic_linux_command, execute_code, shodan_search, shodan_host_info, *WEB_INTEL_TOOLS]
+tools = [
+    generic_linux_command,
+    http_probe,
+    enum_web_surface,
+    execute_code,
+    shodan_search,
+    shodan_host_info,
+    *WEB_INTEL_TOOLS,
+]
 
 # Only expose plan tool when CAI_PLAN is enabled [S]
 if _cfg.plan_enabled:

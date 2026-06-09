@@ -43,6 +43,7 @@ from cai.tools.executor import (  # noqa: F401
     ShellSession,
     create_shell_session,
     list_shell_sessions,
+    get_session_summary,
     _resolve_session_id,
     send_to_session,
     get_session_output,

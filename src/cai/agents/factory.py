@@ -13,6 +13,7 @@ from openai import AsyncOpenAI
 from cai.config import get_config
 from cai.sdk.agents import Agent, OpenAIChatCompletionsModel
 from cai.sdk.agents.logger import logger
+from cai.util.llm_api_base import resolve_llm_openai_compatible_api_key
 
 
 def create_generic_agent_factory(
@@ -54,7 +55,10 @@ def create_generic_agent_factory(
             # Third priority: global CAI_MODEL via CAIConfig
             model_name = cfg.model
 
-        api_key = cfg.openai_api_key or "sk-placeholder-key-for-local-models"
+        api_key = resolve_llm_openai_compatible_api_key(
+            model_name,
+            allow_placeholder=True,
+        )
 
         # Create a new model instance with the original agent name
         # Custom name is only for display purposes, not for the model

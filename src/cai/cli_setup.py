@@ -10,6 +10,7 @@ import sys
 import warnings
 
 from dotenv import load_dotenv
+from cai.envfiles import get_env_load_candidates
 
 
 # ---------------------------------------------------------------------------
@@ -17,9 +18,10 @@ from dotenv import load_dotenv
 # ---------------------------------------------------------------------------
 
 def load_dotenv_and_defaults():
-    """Load .env from cwd; set OPENAI_API_KEY default if missing."""
-    dotenv_path = os.path.join(os.getcwd(), '.env')
-    load_dotenv(dotenv_path=dotenv_path, verbose=False)
+    """Load the effective CAI ``.env`` files; set OPENAI_API_KEY default if missing."""
+    for dotenv_path in get_env_load_candidates():
+        if dotenv_path.is_file():
+            load_dotenv(dotenv_path=dotenv_path, verbose=False, override=False)
     if "OPENAI_API_KEY" not in os.environ:
         os.environ["OPENAI_API_KEY"] = ""
 

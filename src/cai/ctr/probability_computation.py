@@ -74,10 +74,12 @@ import json
 import math
 from rich.table import Table
 from rich.console import Console
+from cai.envfiles import get_env_load_candidates
 
-# Load .env from current directory only, not from parent directories
-dotenv_path = os.path.join(os.getcwd(), '.env')
-load_dotenv(dotenv_path=dotenv_path, verbose=False)
+# Load the effective CAI dotenv files without overriding shell environment.
+for dotenv_path in get_env_load_candidates():
+    if dotenv_path.is_file():
+        load_dotenv(dotenv_path=dotenv_path, verbose=False, override=False)
 
 # Set default for OPENAI_API_KEY if not already set
 if "OPENAI_API_KEY" not in os.environ:

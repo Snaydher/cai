@@ -1115,17 +1115,7 @@ def display_quick_guide(console: Console):
         body = Group(top, Text(""), workflow_text)
 
     doc_url = _QUICK_GUIDE_COMMANDS_DOC_URL
-    # Privacy notice spans full width below the two-column block, above the docs subtitle.
-    _privacy_text = Text.assemble(
-        (
-            "CAI collects pseudonymized data to improve our research.Your privacy is protected in compliance with GDPR.",
-            _GREY,
-        ),
-    )
-    _panel_inner_w = max(40, _safe_console_width(console) - 4)
-    privacy_footer = Align.center(_privacy_text, width=_panel_inner_w)
-    # No blank line between main body and privacy; one newline after privacy before subtitle.
-    panel_body = Group(body, privacy_footer, Text("\n"))
+    panel_body = Group(body, Text("\n"))
     console.print(
         Panel(
             panel_body,

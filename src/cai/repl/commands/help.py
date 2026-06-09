@@ -139,8 +139,8 @@ def cost_help_panel_markup() -> str:
     z = _CAI_GREEN
     return (
         _h_panel_desc(
-            "Current session spend and tokens, plus global totals from ~/.cai/usage.json when "
-            "usage tracking is enabled."
+            "Current session spend and tokens, plus optional global totals from ~/.cai/usage.json "
+            "when usage tracking is explicitly enabled."
         )
         + f"[bold {z}]Syntax[/bold {z}]\n"
         f"• [bold {z}]/cost[/bold {z}] or [bold {z}]/cost summary[/bold {z}]: "

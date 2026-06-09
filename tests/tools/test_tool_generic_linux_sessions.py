@@ -67,3 +67,31 @@ async def test_session_parsing_variants():
         RunContextWrapper(None), json.dumps({"command": f"kill {alias}"})
     )
 
+
+@pytest.mark.asyncio
+async def test_session_status_includes_summary_fields():
+    cmd = "sh -c 'printf ready\\n; cat -'"
+    out = await generic_linux_command.on_invoke_tool(
+        RunContextWrapper(None),
+        json.dumps({"command": cmd, "interactive": True}),
+    )
+    alias = _extract_alias(out)
+    assert alias is not None
+
+    out = await generic_linux_command.on_invoke_tool(
+        RunContextWrapper(None),
+        json.dumps({"command": "session list"}),
+    )
+    assert "cmds=" in out
+    assert "cwd=" in out
+
+    status = await generic_linux_command.on_invoke_tool(
+        RunContextWrapper(None),
+        json.dumps({"command": f"status {alias}"}),
+    )
+    assert "cmds=" in status
+
+    await generic_linux_command.on_invoke_tool(
+        RunContextWrapper(None),
+        json.dumps({"command": f"kill {alias}"}),
+    )

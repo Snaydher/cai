@@ -77,7 +77,7 @@ CATEGORY_DISPLAY: Dict[str, Dict[str, Any]] = {
         "overview": "[dim]Control-the-Rope style digest pipelines: modes, models, output paths, and G-CTR iteration counts.[/dim]",
     },
     "Tracing & telemetry": {
-        "overview": "[dim]OpenTelemetry tracing, product telemetry, and opt-outs for session recording or usage tracking.[/dim]",
+        "overview": "[dim]OpenTelemetry tracing, telemetry, and local recording controls. In this fork they are disabled by default unless explicitly enabled.[/dim]",
     },
     "Security & planning": {
         "overview": "[dim]Guardrails and planning-mode toggles for safer or more structured agent behaviour.[/dim]",

@@ -13,6 +13,7 @@ import unicodedata
 from datetime import datetime
 from cai.tools.common import (run_command, run_command_async,
                               list_shell_sessions,
+                              get_session_summary,
                               get_session_output,
                               terminate_session,
                               is_tool_streaming_enabled,
@@ -196,6 +197,12 @@ def _compress_output_for_model(result: str, command: str) -> str:
     if not isinstance(result, str):
         return result
 
+    summary = _summarize_command_output_for_model(result, command)
+    if summary:
+        if len(result) > MAX_OUTPUT_CHARS_MINIFIED or _is_minified_content(result):
+            return summary
+        return f"{summary}\n\nRaw output:\n{result}"
+
     # Only truncate if CAI_CTX_TRUNC=true
     if os.getenv("CAI_CTX_TRUNC", "").lower() != "true":
         return result
@@ -252,6 +259,88 @@ def _compress_output_for_model(result: str, command: str) -> str:
         f"{head_content}\n\n"
         f"[... {omitted:,} chars truncated ...]\n\n"
         f"{tail_content}"
+    )
+
+
+def _summarize_command_output_for_model(result: str, command: str) -> str:
+    """Return a higher-signal summary for common operational command classes."""
+    cmd = (command or "").strip().lower()
+    if not result.strip():
+        return ""
+    if cmd.startswith("nmap "):
+        return _summarize_nmap_output(result)
+    if cmd.startswith("curl ") or cmd.startswith("http ") or cmd.startswith("wget "):
+        return _summarize_http_like_output(result)
+    if cmd.startswith("ls ") or cmd == "ls":
+        return _summarize_listing_output(result, label="Directory listing")
+    if cmd.startswith("find "):
+        return _summarize_listing_output(result, label="Find results")
+    if cmd.startswith("ss ") or cmd.startswith("netstat "):
+        return _summarize_socket_output(result)
+    return ""
+
+
+def _summarize_nmap_output(result: str) -> str:
+    open_ports = []
+    host = ""
+    for line in result.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("Nmap scan report for "):
+            host = stripped.removeprefix("Nmap scan report for ").strip()
+        elif re.match(r"^\d+/(tcp|udp)\s+open", stripped):
+            open_ports.append(stripped)
+    lines = [f"Nmap summary: target={host or 'unknown'} open_ports={len(open_ports)}"]
+    if open_ports:
+        lines.extend(f"- {row}" for row in open_ports[:12])
+    return "\n".join(lines)
+
+
+def _summarize_http_like_output(result: str) -> str:
+    status_line = ""
+    headers = []
+    for line in result.splitlines():
+        stripped = line.strip()
+        if not status_line and stripped.startswith("HTTP/"):
+            status_line = stripped
+        elif ":" in stripped and len(headers) < 6:
+            key = stripped.split(":", 1)[0].lower()
+            if key in {"server", "content-type", "location", "title"}:
+                headers.append(stripped)
+    lines = [f"HTTP summary: {status_line or 'status not parsed'}"]
+    lines.extend(f"- {header}" for header in headers)
+    return "\n".join(lines)
+
+
+def _summarize_listing_output(result: str, *, label: str) -> str:
+    lines = [line for line in result.splitlines() if line.strip()]
+    preview = lines[:12]
+    return "\n".join(
+        [f"{label}: {len(lines)} entries"] + [f"- {line[:160]}" for line in preview]
+    )
+
+
+def _summarize_socket_output(result: str) -> str:
+    lines = [line for line in result.splitlines() if line.strip()]
+    preview = lines[:12]
+    return "\n".join(
+        [f"Socket summary: {max(len(lines) - 1, 0)} rows"] + [f"- {line[:160]}" for line in preview]
+    )
+
+
+def _format_session_line(session: dict) -> str:
+    fid = session.get("friendly_id") or ""
+    fid_show = (fid + " ") if fid else ""
+    summary_bits = []
+    if session.get("workspace_dir"):
+        summary_bits.append(f"cwd={session['workspace_dir']}")
+    if session.get("command_count") is not None:
+        summary_bits.append(f"cmds={session['command_count']}")
+    if session.get("last_input"):
+        summary_bits.append(f"last='{str(session['last_input'])[:48]}'")
+    suffix = f" {' '.join(summary_bits)}" if summary_bits else ""
+    return (
+        f"{fid_show}({session['session_id'][:8]}) cmd='{session['command']}' "
+        f"last={session['last_activity']} running={session['running']}{suffix}"
     )
 
 
@@ -371,14 +460,17 @@ async def generic_linux_command(
             return "No active sessions"
         lines = ["Active sessions:"]
         for s in sessions:
-            fid = s.get('friendly_id') or ""
-            fid_show = (fid + " ") if fid else ""
-            lines.append(
-                f"{fid_show}({s['session_id'][:8]}) cmd='{s['command']}' last={s['last_activity']} running={s['running']}"
-            )
+            lines.append(_format_session_line(s))
         return "\n".join(lines)
     if cmd_lower.startswith("status "):
-        out = get_session_output(command.split(None, 1)[1], clear=False, stdout=False)
+        target = command.split(None, 1)[1]
+        session_summary = get_session_summary(target)
+        out = get_session_output(target, clear=False, stdout=False)
+        if session_summary:
+            status_header = _format_session_line(session_summary)
+            if out:
+                return f"{status_header}\n\nOutput:\n{out}"
+            return f"{status_header}\n\nNo new output"
         return out if out else "No new output"
 
     if command.startswith("session"):
@@ -409,11 +501,7 @@ async def generic_linux_command(
                 return "No active sessions"
             lines = ["Active sessions:"]
             for s in sessions:
-                fid = s.get('friendly_id') or ""
-                fid_show = (fid + " ") if fid else ""
-                lines.append(
-                    f"{fid_show}({s['session_id'][:8]}) cmd='{s['command']}' last={s['last_activity']} running={s['running']}"
-                )
+                lines.append(_format_session_line(s))
             return "\n".join(lines)
 
         if action == "output" and arg:
@@ -424,8 +512,12 @@ async def generic_linux_command(
 
         if action == "status" and arg:
             # Reuse output API without clearing so UI can poll frequently
+            session_summary = get_session_summary(arg)
             out = get_session_output(arg, clear=False, stdout=False)
             # Provide compact status header
+            if session_summary:
+                status_header = _format_session_line(session_summary)
+                return f"{status_header}\n\nOutput:\n{out}" if out else f"{status_header}\n\nNo new output"
             return out if out else f"No new output for session {arg}"
 
         return "Usage: session list|output <id>|status <id>|kill <id>"

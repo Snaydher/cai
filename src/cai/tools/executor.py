@@ -90,6 +90,9 @@ class ShellSession:  # pylint: disable=too-many-instance-attributes
         self._buffer_lock = threading.Lock()
         self.is_running = False
         self.last_activity = time.time()
+        self.command_count = 0
+        self.last_input = command
+        self.last_output_preview = ""
 
     def start(self):
         """Start the shell session in the appropriate environment."""
@@ -112,6 +115,7 @@ class ShellSession:  # pylint: disable=too-many-instance-attributes
                     preexec_fn=os.setsid, universal_newlines=True,
                 )
                 self.is_running = True
+                self.command_count = 1
                 with self._buffer_lock:
                     self.output_buffer.append(
                         f"[Session {self.session_id}] Started in container {self.container_id[:12]}: "
@@ -129,6 +133,7 @@ class ShellSession:  # pylint: disable=too-many-instance-attributes
         if self.ctf:
             try:
                 self.is_running = True
+                self.command_count = 1
                 with self._buffer_lock:
                     self.output_buffer.append(
                         f"[Session {self.session_id}] Started CTF command: {self.command}"
@@ -154,6 +159,7 @@ class ShellSession:  # pylint: disable=too-many-instance-attributes
                 cwd=self.workspace_dir, preexec_fn=os.setsid, universal_newlines=True,
             )
             self.is_running = True
+            self.command_count = 1
             with self._buffer_lock:
                 self.output_buffer.append(f"[Session {self.session_id}] Started: {self.command}")
             threading.Thread(target=self._read_output, daemon=True).start()
@@ -188,6 +194,9 @@ class ShellSession:  # pylint: disable=too-many-instance-attributes
                     if output is not None and output != "":
                         with self._buffer_lock:
                             self.output_buffer.append(output)
+                        preview = output.strip().replace("\n", " ")
+                        if preview:
+                            self.last_output_preview = preview[:160]
                         self.last_activity = time.time()
                 except OSError:
                     if self.process and self.process.poll() is not None:
@@ -221,11 +230,18 @@ class ShellSession:  # pylint: disable=too-many-instance-attributes
                 return "Session is not running"
         try:
             if self.ctf:
+                self.last_input = input_data
+                self.command_count += 1
                 output = self.ctf.get_shell(input_data)
                 with self._buffer_lock:
                     self.output_buffer.append(output)
+                preview = str(output).strip().replace("\n", " ")
+                if preview:
+                    self.last_output_preview = preview[:160]
                 return "Input sent to CTF session"
             if self.master is not None:
+                self.last_input = input_data
+                self.command_count += 1
                 input_data_bytes = (input_data.rstrip() + "\n").encode()
                 bytes_written = os.write(self.master, input_data_bytes)
                 if bytes_written != len(input_data_bytes):
@@ -260,6 +276,20 @@ class ShellSession:  # pylint: disable=too-many-instance-attributes
             if mark_position:
                 self._last_output_position = len(self.output_buffer)
         return new_output
+
+    def summary(self) -> dict:
+        """Return a compact state summary for orchestration and UI."""
+        return {
+            "friendly_id": self.friendly_id,
+            "session_id": self.session_id,
+            "command": self.command,
+            "running": self.is_running,
+            "last_activity": time.strftime("%H:%M:%S", time.localtime(self.last_activity)),
+            "workspace_dir": self.workspace_dir,
+            "command_count": self.command_count,
+            "last_input": self.last_input,
+            "last_output_preview": self.last_output_preview,
+        }
 
     def terminate(self):
         """Terminate the session"""
@@ -360,14 +390,16 @@ def list_shell_sessions():
         if not session.is_running:
             del ACTIVE_SESSIONS[session_id]
             continue
-        result.append({
-            "friendly_id": getattr(session, 'friendly_id', None),
-            "session_id": session_id,
-            "command": session.command,
-            "running": session.is_running,
-            "last_activity": time.strftime("%H:%M:%S", time.localtime(session.last_activity))
-        })
+        result.append(session.summary())
     return result
+
+
+def get_session_summary(session_id):
+    """Get a compact summary for one session."""
+    resolved = _resolve_session_id(session_id)
+    if not resolved or resolved not in ACTIVE_SESSIONS:
+        return None
+    return ACTIVE_SESSIONS[resolved].summary()
 
 
 def _resolve_session_id(session_identifier):

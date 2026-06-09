@@ -6,6 +6,7 @@ from typing import List, Optional
 from rich.console import Console  # pylint: disable=import-error
 from rich.panel import Panel  # pylint: disable=import-error
 
+from cai.envfiles import get_env_write_target
 from cai.repl.commands.base import Command, register_command
 from cai.repl.ui.banner import _CAI_GREEN
 from cai.repl.ui.startup_hints import mask_key_for_hint
@@ -108,25 +109,7 @@ class ApiCommand(Command):
             return False
 
     def _get_env_file_path(self) -> str:
-        current_dir = os.getcwd()
-        env_path = os.path.join(current_dir, ".env")
-        if os.path.exists(env_path):
-            return env_path
-
-        search_dir = current_dir
-        for _ in range(5):
-            if any(
-                os.path.exists(os.path.join(search_dir, marker))
-                for marker in ["pyproject.toml", "setup.py", ".git"]
-            ):
-                env_path = os.path.join(search_dir, ".env")
-                if os.path.exists(env_path):
-                    return env_path
-            parent = os.path.dirname(search_dir)
-            if parent == search_dir:
-                break
-            search_dir = parent
-        return os.path.join(current_dir, ".env")
+        return str(get_env_write_target())
 
     def _get_current_api_key(self, env_file_path: str) -> Optional[str]:
         if not os.path.exists(env_file_path):
@@ -166,6 +149,7 @@ class ApiCommand(Command):
 
     def _update_env_file(self, env_file_path: str, new_api_key: str) -> bool:
         try:
+            os.makedirs(os.path.dirname(env_file_path), exist_ok=True)
             self._create_env_backup(env_file_path)
             if os.path.exists(env_file_path):
                 with open(env_file_path, "r", encoding="utf-8") as file:

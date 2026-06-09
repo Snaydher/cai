@@ -26,7 +26,10 @@ from openai import NOT_GIVEN, NotGiven
 from openai.types.responses import Response
 
 from cai.errors import LLMContextOverflow, LLMTimeout, LLMRateLimited, LLMProviderUnavailable
-from cai.util.llm_api_base import resolve_llm_openai_compatible_base
+from cai.util.llm_api_base import (
+    resolve_llm_openai_compatible_api_key,
+    resolve_llm_openai_compatible_base,
+)
 from cai.util.wait_hints import sleep_with_retry_backoff_hint
 from ..fake_id import FAKE_RESPONSES_ID
 
@@ -149,7 +152,7 @@ async def direct_httpx_completion(
     )
     api_key = kwargs.pop(
         "api_key",
-        os.getenv("ALIAS_API_KEY", os.getenv("OPENAI_API_KEY", "sk-placeholder")),
+        resolve_llm_openai_compatible_api_key(_mid),
     ).strip()
     kwargs.pop("custom_llm_provider", None)
     kwargs.pop("extra_headers", None)

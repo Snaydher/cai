@@ -3,11 +3,15 @@ CTF Agent with one tool
 """
 
 from cai.sdk.agents import Agent, OpenAIChatCompletionsModel
+from cai.tools.reconnaissance.enumeration import enum_network_surface
 from cai.tools.reconnaissance.generic_linux_command import generic_linux_command  # noqa
+from cai.tools.reconnaissance.nmap import nmap_scan
 from openai import AsyncOpenAI
 from cai.util import create_system_prompt_renderer, load_prompt_template
 from cai.config import get_config
 from cai.agents.guardrails import get_security_guardrails
+from cai.util.llm_api_base import resolve_llm_openai_compatible_api_key
+from cai.tools.web.http_probe import http_probe
 
 _cfg = get_config()
 model_name = _cfg.model
@@ -25,8 +29,10 @@ model_name = _cfg.model
 
 ctf_agent_system_prompt = load_prompt_template("prompts/system_ctf_agent.md")
 
-# Loaded in openaichatcompletion client
-api_key = _cfg.openai_api_key or "sk-placeholder-key-for-local-models"
+api_key = resolve_llm_openai_compatible_api_key(
+    model_name,
+    allow_placeholder=True,
+)
 
 # Get security guardrails for this high-risk agent
 input_guardrails, output_guardrails = get_security_guardrails()
@@ -41,6 +47,9 @@ one_tool_agent = Agent(
     ),
     tools=[
         generic_linux_command,
+        nmap_scan,
+        http_probe,
+        enum_network_surface,
     ],
     input_guardrails=input_guardrails,
     output_guardrails=output_guardrails,

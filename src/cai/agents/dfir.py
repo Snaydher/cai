@@ -24,6 +24,7 @@ from cai.tools.command_and_control.sshpass import (  # pylint: disable=import-er
 from cai.tools.reconnaissance.generic_linux_command import (  # pylint: disable=import-error # noqa: E501
 generic_linux_command,
 )
+from cai.tools.reconnaissance.nmap import nmap_scan
 
 from cai.tools.reconnaissance.exec_code import (  # pylint: disable=import-error # noqa: E501
     execute_code,
@@ -47,6 +48,7 @@ dfir_agent_system_prompt = load_prompt_template("prompts/system_dfir_agent.md")
 # Define tool list based on available API keys (via CAIConfig) [S]
 tools = [
     generic_linux_command,
+    nmap_scan,
     run_ssh_command_with_credentials,
     execute_code,
     think,

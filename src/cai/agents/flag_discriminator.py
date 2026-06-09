@@ -7,12 +7,14 @@ from cai.sdk.agents import Agent, OpenAIChatCompletionsModel, handoff
 from openai import AsyncOpenAI
 from cai.agents.one_tool import one_tool_agent
 from cai.util import create_system_prompt_renderer, load_prompt_template
+from cai.util.llm_api_base import resolve_llm_openai_compatible_api_key
 
 model = os.getenv("CAI_MODEL", "alias1")
-
-# Create OpenAI client with fallback API key to prevent initialization errors
-# The actual API key should be set in environment variables or .env file
-api_key = os.getenv("OPENAI_API_KEY", "sk-placeholder-key-for-local-models")
+effective_model = "alias1" if os.getenv("CAI_MODEL") == "o3-mini" else model
+api_key = resolve_llm_openai_compatible_api_key(
+    effective_model,
+    allow_placeholder=True,
+)
 
 _flag_discriminator_prompt = load_prompt_template("prompts/system_flag_discriminator.md")
 
@@ -24,7 +26,7 @@ flag_discriminator = Agent(
         cyber_micro_profile_key="flag",
     ),
     model=OpenAIChatCompletionsModel(
-        model="alias1" if os.getenv("CAI_MODEL") == "o3-mini" else model,
+        model=effective_model,
         openai_client=AsyncOpenAI(api_key=api_key),
     ),
     handoffs=[

@@ -33,13 +33,13 @@ class TestDisplayQuickGuide:
 
     def test_no_cai_prompt_prefix_and_docs_url_in_output(self):
         buf = StringIO()
-        # Tall + wide: body must not collapse to "..."; subtitle must fit GDPR + full docs URL.
+        # Tall + wide: body must not collapse to "..."; subtitle must fit the full docs URL.
         console = Console(file=buf, width=280, height=200, force_terminal=True)
         display_quick_guide(console)
         out = buf.getvalue()
         assert _QUICK_GUIDE_COMMANDS_DOC_URL in out
-        assert "pseudonymized data" in out
-        assert "GDPR" in out
+        assert "pseudonymized data" not in out
+        assert "GDPR" not in out
         assert "CAI>/" not in out
         assert "CAI> " not in out
         assert "Essential commands" in out

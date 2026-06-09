@@ -18,6 +18,8 @@ from textual import on
 from textual.events import Click, MouseMove, Key
 from rich.text import Text
 
+from cai.envfiles import get_env_write_target
+
 # Import will be done locally to avoid circular import
 
 
@@ -2618,30 +2620,8 @@ class Sidebar(Container):
             pass
 
     def _get_env_file_path(self) -> str:
-        """Get the path to the .env file"""
-        # Look for .env file in current working directory or project root
-        current_dir = os.getcwd()
-        
-        # Try current directory first
-        env_path = os.path.join(current_dir, ".env")
-        if os.path.exists(env_path):
-            return env_path
-        
-        # Try to find project root by looking for specific files
-        search_dir = current_dir
-        for _ in range(5):  # Limit search depth
-            if any(os.path.exists(os.path.join(search_dir, marker)) 
-                   for marker in ["pyproject.toml", "setup.py", ".git"]):
-                env_path = os.path.join(search_dir, ".env")
-                if os.path.exists(env_path):
-                    return env_path
-            parent = os.path.dirname(search_dir)
-            if parent == search_dir:  # Reached root
-                break
-            search_dir = parent
-        
-        # Default to current directory if not found
-        return os.path.join(current_dir, ".env")
+        """Get the effective persisted ``.env`` path."""
+        return str(get_env_write_target())
 
     def _create_env_backup(self) -> bool:
         """Create a backup of the .env file before modifications"""

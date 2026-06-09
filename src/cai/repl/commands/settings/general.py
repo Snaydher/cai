@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from cai.envfiles import get_env_write_target
 from questionary import Style
 from rich.console import Console
 
@@ -61,8 +62,8 @@ def get_current_terminal_id() -> Optional[str]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def get_env_file_path() -> Path:
-    """Get the path to the .env file in the current directory."""
-    return Path.cwd() / '.env'
+    """Get the effective persisted ``.env`` path for CAI settings edits."""
+    return get_env_write_target()
 
 
 def read_env_file() -> Dict[str, str]:
@@ -89,6 +90,7 @@ def write_env_file(env_dict: Dict[str, str]) -> bool:
     """
     try:
         env_path = get_env_file_path()
+        env_path.parent.mkdir(parents=True, exist_ok=True)
 
         existing_lines: list[str] = []
         if env_path.exists():

@@ -3763,9 +3763,12 @@ class OpenAIChatCompletionsModel(Model):
                 request_body = {k: v for k, v in request_body.items() if v is not None}
 
                 api_url = f"{openai_api_base.rstrip('/')}/chat/completions"
+                resolved_api_key = resolve_llm_openai_compatible_api_key(
+                    str(kwargs.get("model") or self.model)
+                )
                 headers = {
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {get_config().openai_api_key or 'sk-placeholder'}",
+                    "Authorization": f"Bearer {resolved_api_key}",
                 }
 
                 if stream:

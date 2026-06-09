@@ -8,9 +8,24 @@ CAI leverages the `.env` file to load configuration at launch. To facilitate the
 
 CAI does NOT provide API keys for any model by default. Don't ask us to provide keys, use your own or host your own models.
 
-⚠️  Note:
+### Effective `.env` resolution in this fork
 
-The OPENAI_API_KEY must not be left blank. It should contain either "sk-123" (as a placeholder) or your actual API key. See https://github.com/aliasrobotics/cai/issues/27.
+This fork loads env files in the following order:
+
+1. `CAI_ENV_FILE`
+2. nearest `.env` found by walking upward from the current working directory
+3. `~/.config/cai/.env`
+
+This makes a centralized env file practical while preserving local project overrides.
+
+### Authentication rules in this fork
+
+The key used depends on the selected model family:
+
+- `alias*`, `cai*`, `csi*` use `ALIAS_API_KEY`
+- `gpt-*`, `zai/*`, and other OpenAI-compatible non-alias models use `OPENAI_API_KEY`
+
+Placeholder values may exist internally to satisfy client initialization in some paths, but they are not a substitute for a real provider key.
 
 ### List of Environment Variables
 
@@ -33,7 +48,7 @@ For a complete reference organized by use case, see [Environment Variables Refer
 | CAI_ORCHESTRATION_MAS_HINT | When `true`, `orchestration_agent` may receive one synthetic `user`-role nudge per `Runner` run if the prompt looks multi-front but only `run_specialist` ran (suggests parallel or contest tools). Set `false` to disable | true |
 | CAI_MAX_INTERACTIONS | Maximum number of interactions (tool calls, agent actions, etc.) allowed in a session. If exceeded, only CLI commands are allowed until increased. If force_until_flag=true, the session will exit | inf |
 | CAI_PRICE_LIMIT | Price limit for the conversation in dollars. If exceeded, only CLI commands are allowed until increased. If force_until_flag=true, the session will exit | 1 |
-| CAI_TRACING | Enable/disable OpenTelemetry tracing. When enabled, traces execution flow and agent interactions for debugging and analysis | true |
+| CAI_TRACING | Enable/disable OpenTelemetry tracing. When enabled, traces execution flow and agent interactions for debugging and analysis | false |
 | CAI_AGENT_TYPE | Registered agent key. Defaults to `orchestration_agent` (breadth-first entry: specialist tools `run_specialist`, `run_dual_approach_contest`, `run_parallel_specialists` plus handoffs). Use `selection_agent` for a handoff-only router without those tools, or pin a specialist such as `redteam_agent` | orchestration_agent |
 | CAI_STATE | Enable/disable stateful mode. When enabled, the agent will use a state agent to keep track of the state of the network and the flags found | false |
 | CAI_COMPACTED_MEMORY | When true, inject `/compact` conversation summaries into agent system prompts | false |
@@ -44,7 +59,7 @@ For a complete reference organized by use case, see [Environment Variables Refer
 | CAI_TOOL_STREAM | Enable/disable streaming output for tool executions (real-time command output). Independent of CAI_STREAM | true |
 | CAI_DEBUG_TOOLS_VIZ | Enable debug output for tool visualization and panel rendering | false |
 | CAI_SHOW_CACHE | Show cache information and message history list | false |
-| CAI_TELEMETRY | Enable/disable telemetry | true |
+| CAI_TELEMETRY | Enable/disable telemetry | false |
 | CAI_PARALLEL | Number of parallel agent instances to run. When set to values greater than 1, executes multiple instances of the same agent in parallel and displays all results | 1 |
 | CAI_GUARDRAILS | Enable/disable security guardrails for agents. When set to "true", applies security guardrails to prevent potentially dangerous outputs and inputs | false |
 | CAI_GCTR_NITERATIONS | Number of tool interactions before triggering GCTR (Generative Cut-The-Rope) analysis in bug_bounter_gctr agent. Only applies when using gctr-enabled agents | 5 |
@@ -63,6 +78,22 @@ OLLAMA_API_BASE="https://custom-openai-proxy.com/v1"
 Or directly from the command line:
 ```bash
 OLLAMA_API_BASE="https://custom-openai-proxy.com/v1" cai
+```
+
+## Source-based local runtime
+
+This fork is designed to run directly from source:
+
+```bash
+scripts/bootstrap-local-venv.sh
+scripts/use-local-cai.sh
+```
+
+Recommended shell setup:
+
+```bash
+export PATH="/home/snyder/Data/cai/.venv/bin:$PATH"
+export CAI_ENV_FILE="$HOME/.config/cai/.env"
 ```
 
 ## OpenRouter Integration

@@ -27,6 +27,7 @@ from cai.continuous_ops.task_queue import (
     pick_next_task,
 )
 from cai.config import DEFAULT_AGENT_TYPE
+from cai.envfiles import get_env_load_candidates
 from cai.continuous_ops.tick_context import (
     extract_tick_context_from_file,
     persist_tick_context,
@@ -154,8 +155,7 @@ def _load_dotenv_for_loop(cfg: LoopConfig, run_dir: Path) -> None:
     seen: set[Path] = set()
     candidates = [
         *_infer_framework_dotenv_paths(cfg),
-        run_dir / ".env",
-        Path.home() / ".cai" / ".env",
+        *get_env_load_candidates(run_dir),
     ]
     for envf in candidates:
         try:

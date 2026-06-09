@@ -5,11 +5,8 @@ Data recorder
 import os  # pylint: disable=import-error
 from datetime import datetime
 import json
-import socket
-import urllib.request
 import getpass
 import platform
-from urllib.error import URLError
 import pytz  # pylint: disable=import-error
 import uuid  # Add uuid import
 from cai.util import get_active_time, get_idle_time
@@ -18,6 +15,7 @@ from typing import Any, List, Dict, Tuple
 
 # Global recorder instance for session-wide logging
 _session_recorder = None
+_disabled_session_recorder = None
 
 
 def _format_log_message(message, args) -> str:
@@ -51,14 +49,51 @@ def get_session_recorder(workspace_name=None):
         DataRecorder: The session recorder instance.
     """
     global _session_recorder
+    global _disabled_session_recorder
 
-    # Check if session recording is disabled (e.g., during replay)
-    if os.environ.get("CAI_DISABLE_SESSION_RECORDING", "").lower() == "true":
-        return None
+    # Privacy-first fork default: only enable session recording when explicitly opted in.
+    if os.environ.get("CAI_DISABLE_SESSION_RECORDING", "true").lower() != "false":
+        if _disabled_session_recorder is None:
+            _disabled_session_recorder = NullSessionRecorder()
+        return _disabled_session_recorder
 
     if _session_recorder is None:
         _session_recorder = DataRecorder(workspace_name)
     return _session_recorder
+
+
+class NullSessionRecorder:
+    """No-op recorder used when session recording is disabled."""
+
+    session_id = None
+    filename = None
+
+    def __bool__(self) -> bool:
+        return False
+
+    def rec_training_data(self, create_params, msg, total_cost=None, agent_name=None) -> None:
+        return None
+
+    def log_user_message(self, user_message):
+        return None
+
+    def log_assistant_message(self, assistant_message, tool_calls=None):
+        return None
+
+    def log_session_end(self):
+        return None
+
+    def warning(self, message, *args, **kwargs):
+        return None
+
+    def error(self, message, *args, **kwargs):
+        return None
+
+    def info(self, message, *args, **kwargs):
+        return None
+
+    def debug(self, message, *args, **kwargs):
+        return None
 
 
 class DataRecorder:  # pylint: disable=too-few-public-methods
@@ -103,41 +138,12 @@ class DataRecorder:  # pylint: disable=too-few-public-methods
         except Exception:  # pylint: disable=broad-except
             os_info = "unknown_os"
 
-        # Check internet connection and get public IP
-        public_ip = "127.0.0.1"
-
-        # Skip network check if disabled for faster startup
-        if os.getenv("CAI_SKIP_NETWORK_CHECK", "false").lower() != "true":
-            try:
-                # Quick connection check with minimal traffic
-                socket.create_connection(("1.1.1.1", 53), timeout=1)
-
-                # If connected, try to get public IP
-                try:
-                    # Using a simple and lightweight service
-                    with urllib.request.urlopen(  # nosec: B310
-                        "https://api.ipify.org", timeout=2
-                    ) as response:
-                        public_ip = response.read().decode("utf-8")
-                except (URLError, socket.timeout):
-                    # Fallback to another service if the first one fails
-                    try:
-                        with urllib.request.urlopen(  # nosec: B310
-                            "https://ifconfig.me", timeout=2
-                        ) as response:
-                            public_ip = response.read().decode("utf-8")
-                    except (URLError, socket.timeout):
-                        # If both services fail, keep the default value
-                        pass
-            except (OSError, socket.timeout, socket.gaierror):
-                # No internet connection, keep the default value
-                pass
-
-        # Create filename with username, OS info, and IP
+        # Create filename with username and OS info only. Avoid external network checks
+        # and avoid embedding routable identifiers in local log filenames.
         timestamp = (
             datetime.now().astimezone(pytz.timezone("Europe/Madrid")).strftime("%Y%m%d_%H%M%S")
         )
-        base_filename = f'cai_{self.session_id}_{timestamp}_{username}_{os_info}_{public_ip.replace(".", "_")}.jsonl'
+        base_filename = f"cai_{self.session_id}_{timestamp}_{username}_{os_info}.jsonl"
 
         if workspace_name:
             self.filename = os.path.join(log_dir, f"{workspace_name}_{base_filename}")
@@ -153,7 +159,6 @@ class DataRecorder:  # pylint: disable=too-few-public-methods
                 "event": "session_start",
                 "timestamp": datetime.now().astimezone(pytz.timezone("Europe/Madrid")).isoformat(),
                 "session_id": self.session_id,
-                "alias_api_key": os.getenv("ALIAS_API_KEY", ""),
             }
             json.dump(session_start, f)
             f.write("\n")
